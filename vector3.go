@@ -32,6 +32,10 @@ func (v1 *vec3) Magnitude() float64 {
 	return math.Sqrt(v1.X*v1.X + v1.Y*v1.Y + v1.Z*v1.Z)
 }
 
+func (v1 *vec3) Length_Squared() float64 {
+	return (v1.X * v1.X) + (v1.Y * v1.Y) + (v1.Z * v1.Z)
+}
+
 // Aux functions
 
 // Add two vec3

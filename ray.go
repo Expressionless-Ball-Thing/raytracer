@@ -5,6 +5,6 @@ type ray struct {
 	direction vec3
 }
 
-func (r *ray) At(t float64) *vec3 {
-	return r.origin.Add(*r.direction.Scale(t))
+func (r *ray) At(t float64) vec3 {
+	return *r.origin.Add(*r.direction.Scale(t))
 }
