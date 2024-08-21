@@ -5,8 +5,17 @@ import (
 )
 
 type sphere struct {
-	center vec3
-	radius float64
+	center   *vec3
+	radius   float64
+	material *material
+}
+
+func NewSphere(center *vec3, radius float64, material *material) *sphere {
+	return &sphere{
+		center,
+		radius,
+		material,
+	}
 }
 
 /*
@@ -49,7 +58,8 @@ func (sphere *sphere) hit(ray *ray, ray_tmin float64, ray_tmax float64, record *
 
 	record.t = root
 	record.point = ray.At(record.t)
-	outward_normal := (record.point.Sub(sphere.center).Scale(1.0 / sphere.radius))
+	outward_normal := (record.point.Sub(*sphere.center).Scale(1.0 / sphere.radius))
 	record.set_face_normal(ray, outward_normal)
+	record.material = sphere.material
 	return true
 }

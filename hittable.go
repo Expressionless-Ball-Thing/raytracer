@@ -5,6 +5,7 @@ type hit_record struct {
 	normal     vec3
 	t          float64
 	front_face bool
+	material   *material
 }
 
 // Sets the hit record normal vector.
