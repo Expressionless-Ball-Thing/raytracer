@@ -5,81 +5,87 @@ import (
 	"math/rand/v2"
 )
 
-type material interface {
-	scatter(ray_in *ray, rec *hit_record, attenuation *vec3, scattered *ray) bool
+type Material interface {
+
+	// Given incident direction and the Normal of the surface, calculate the reflected direction and the attenuation
+	scatter(in Vec3, hit Hit) (out Vec3, attenuation Vec3, ok bool)
 }
 
-// Lambertian
-type lambertian struct {
-	albedo vec3
+// Lambert describes a diffuse material.
+type Lambert struct {
+	Albedo Vec3
 }
 
-func (mat *lambertian) scatter(ray_in *ray, rec *hit_record, attenuation *vec3, scattered *ray) bool {
-	// TODO: Make this scatter with some fixed probability p and have attenuation be albedo/p
-	scatter_direction := *rec.normal.Add(*Random_unit_vec3())
+// NewLambert creates a new Lambert material with the given color.
+func NewLambert(albedo Vec3) *Lambert {
+	return &Lambert{Albedo: albedo}
+}
 
-	// Check to prevent the scenario where the scatter_direction is exactly the opposite of the normal vector.
+// Scatter scatters incoming light rays in a hemisphere about the normal.
+func (lambert *Lambert) scatter(in Vec3, hit Hit) (out Vec3, attenuation Vec3, ok bool) {
+
+	// TODO: scatter with some fixed probability p and have attenuation be albedo/p .
+
+	scatter_direction := hit.normal.Add(Random_unit_Vec3()) // added a normal vector to make it closer to the surface normal
 	if scatter_direction.near_zero() {
-		scatter_direction = rec.normal
+		scatter_direction = hit.normal
 	}
-
-	scattered.origin = rec.point
-	scattered.direction = scatter_direction
-	*attenuation = mat.albedo
-	return true
+	return scatter_direction, lambert.Albedo, true
 }
 
 // Metal
-type metal struct {
-	albedo vec3
+type Metal struct {
+	albedo Vec3
 	fuzz   float64
 }
 
-func (mat *metal) scatter(ray_in *ray, rec *hit_record, attenuation *vec3, scattered *ray) bool {
-
-	reflected := Reflect(ray_in.direction, rec.normal)
-	reflected = *Unit(&reflected).Add(*Random_unit_vec3().Scale(mat.fuzz)) // Adding some fuzz to make the reflections look fuzzy
-	scattered.origin = rec.point
-	scattered.direction = reflected
-	*attenuation = mat.albedo
-	return (Dot(&scattered.direction, &rec.normal) > 0)
+// NewMetal creates a new Metal material with the given color and fuzz factor
+func NewMetal(albedo Vec3, fuzz float64) *Metal {
+	return &Metal{albedo, fuzz}
 }
 
-// Dielectric
-type dielectric struct {
+func (mat *Metal) scatter(in Vec3, hit Hit) (out Vec3, attenuation Vec3, ok bool) {
+
+	reflected := Reflect(in, hit.normal).Unit().Add(Random_unit_Vec3().Scale(mat.fuzz)) // Adding some fuzz to make the reflections look fuzzy
+	return reflected, mat.albedo, (Dot(reflected, hit.normal) > 0)
+}
+
+type Dielectric struct {
 	// Refractive index in vacuum or air, or the ratio of the material's refractive index over the refractive index of the enclosing media
 	refraction_index float64
 }
 
-func (mat *dielectric) scatter(ray_in *ray, rec *hit_record, attenuation *vec3, scattered *ray) bool {
+func NewDielectric(refraction_index float64) *Dielectric {
+	return &Dielectric{refraction_index}
+}
 
-	attenuation.X, attenuation.Y, attenuation.Z = 1, 1, 1
+func (mat *Dielectric) scatter(in Vec3, hit Hit) (out Vec3, attenuation Vec3, ok bool) {
+
 	var ri float64
-	if rec.front_face {
+	if hit.front_face {
 		ri = 1.0 / mat.refraction_index
 	} else {
 		ri = mat.refraction_index
 	}
 
-	unit_direction := Unit(&ray_in.direction)
-	cos_theta := math.Min(Dot(unit_direction.Negate(), &rec.normal), 1.0)
+	unit_direction := in.Unit()
+
+	cos_theta := math.Min(Dot(unit_direction.Negate(), hit.normal), 1.0)
 	sin_theta := math.Sqrt(1 - cos_theta*cos_theta)
 
 	cannot_refract := ri*sin_theta > 1.0
-	var direction vec3
 
 	// Decide if the ray goes through total internal refraction.
 	if cannot_refract || reflectance(cos_theta, ri) > rand.Float64() {
-		direction = Reflect(*unit_direction, rec.normal)
+		out = Reflect(unit_direction, hit.normal)
 	} else {
-		direction = *Refract(*unit_direction, rec.normal, ri)
+		out = Refract(unit_direction, hit.normal, ri)
 	}
 
-	scattered.origin = rec.point
-	scattered.direction = direction
-	return true
+	return out, NewVec3(1, 1, 1), true
 }
 
+// Use Schlick's approximation for reflectance.
 func reflectance(cosine float64, refraction_index float64) float64 {
 	r0 := (1 - refraction_index) / (1 + refraction_index)
 	r0 *= r0

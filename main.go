@@ -1,61 +1,64 @@
 package main
 
-import "math/rand/v2"
+import (
+	"fmt"
+	"math/rand/v2"
+	"time"
+)
 
 func main() {
 
-	var world hittable_list
-	var ground_mat material = &lambertian{vec3{0.5, 0.5, 0.5}}
-	world = append(world, &sphere{&vec3{0, -1000, 0}, 1000, &ground_mat})
+	start := time.Now()
+	// World
+	var world Hit_List
 
-	for a := -11; a < 11; a++ {
-		for b := -11; b < 11; b++ {
+	var material_ground Material = NewLambert(NewVec3(0.5, 0.5, 0.5))
+
+	world.Add(
+		NewSphere(NewVec3(0, -1000, -1), 1000, material_ground),
+	)
+
+	for a := -5; a < 5; a++ {
+		for b := -5; b < 5; b++ {
 			choose_mat := rand.Float64()
-			center := vec3{float64(a) + 0.9*rand.Float64(), 0.2, float64(b) + 0.9*rand.Float64()}
+			center := NewVec3(float64(a)+0.9*rand.Float64(), 0.2, float64(b)+0.9*rand.Float64())
 
-			if (center.Sub(vec3{4, 0.2, 0}).Magnitude() > 0.9) {
-				var sphere_mat material
-
+			if center.Sub(NewVec3(4, 0.2, 0)).Magnitude() > 0.9 {
 				if choose_mat < 0.8 {
-					//diffuse
-					albedo := Random_unit_vec3().Mult(*Random_unit_vec3())
-					sphere_mat = &lambertian{*albedo}
-					world = append(world, NewSphere(&center, 0.2, &sphere_mat))
+					albedo := NewVec3Random(0, 1).Mult(NewVec3Random(0, 1))
+					mat := NewLambert(albedo)
+					// center2 := center.Add(NewVec3(0, Random_float64_bounded(0, 0.5), 0))
+					world.Add(NewSphere(center, 0.2, mat))
 				} else if choose_mat < 0.95 {
-					//metal
-					albedo := RandomVec3(0.5, 1)
-					fuzz := random_float64_bounded(0, 0.5)
-					sphere_mat = &metal{*albedo, fuzz}
-					world = append(world, NewSphere(&center, 0.2, &sphere_mat))
+					albedo := NewVec3Random(0.5, 1)
+					fuzz := Random_float64_bounded(0, 0.5)
+					mat := NewMetal(albedo, fuzz)
+					world.Add(NewSphere(center, 0.2, mat))
 				} else {
-					// glass
-					sphere_mat = &dielectric{1.5}
-					world = append(world, NewSphere(&center, 0.2, &sphere_mat))
+					mat := NewDielectric(1.5)
+					world.Add(NewSphere(center, 0.2, mat))
 				}
 			}
 		}
 	}
 
-	var material1 material = &dielectric{1.5}
-	world = append(world, NewSphere(&vec3{0, 1, 0}, 1.0, &material1))
+	var mat1 Material = NewDielectric(1.5)
+	world.Add(NewSphere(NewVec3(0, 1, 0), 1.0, mat1))
 
-	var material2 material = &lambertian{vec3{0.4, 0.2, 0.1}}
-	world = append(world, NewSphere(&vec3{-4, 1, 0}, 1.0, &material2))
+	var mat2 Material = NewLambert(NewVec3(0.4, 0.2, 0.1))
+	world.Add(NewSphere(NewVec3(-4, 1, 0), 1.0, mat2))
 
-	var material3 material = &metal{vec3{0.7, 0.6, 0.5}, 0.0}
-	world = append(world, NewSphere(&vec3{4, 1, 0}, 1.0, &material3))
+	var mat3 Material = NewMetal(NewVec3(0.7, 0.6, 0.5), 0.0)
+	world.Add(NewSphere(NewVec3(4, 1, 0), 1.0, mat3))
 
-	camera := NewCamera(16.0/9.0, 1200)
-	camera.sample_per_pixel = 100
-	camera.max_depth = 10
+	var node Hittable = NewBVHNode(world.list)
+	// world.list
+	// world.aabb = *thing.bounding_box()
 
-	camera.vfov = 20
-	camera.lookfrom = vec3{13, 2, 3}
-	camera.lookat = vec3{0, 0, 0}
-	camera.vup = vec3{0, 1, 0}
+	cam := NewCamera(400, NewVec3(13, 0, 3), NewVec3(0, 0, 0), NewVec3(0, 1, 0), 20, 16.0/9.0, 10.0, 0.6)
+	cam.render(node, 10, 20)
 
-	camera.defocus_angle = 0.6
-	camera.focus_distance = 10
+	elapsed := time.Since(start)
 
-	camera.render(world)
+	fmt.Println("Took", elapsed)
 }
