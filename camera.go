@@ -92,7 +92,6 @@ func (cam *camera) render(world Hittable, sample_per_pixel, max_depth int) {
 	img := image.NewNRGBA(image.Rectangle{upLeft, lowRight})
 
 	for j := 0; j < cam.image_height; j++ {
-		fmt.Println(j)
 		for i := 0; i < cam.image_width; i++ {
 
 			// The original way of doing things.
@@ -150,7 +149,6 @@ func (cam *camera) defocus_disk_sample() Vec3 {
 }
 
 func ray_color(ray Ray, depth int, world Hittable) Vec3 {
-
 	// If we've exceeded the ray bounce limit, no more light is gathered.
 	if depth <= 0 {
 		return NewVec3(0, 0, 0)

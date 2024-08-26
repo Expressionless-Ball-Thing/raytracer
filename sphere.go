@@ -84,12 +84,14 @@ func (sphere *Sphere) hit(ray *Ray, ray_tmin float64, ray_tmax float64) (record 
 		}
 	}
 
-	record.t = root
-	record.point = ray.At(record.t)
-	record.normal = (record.point.Sub(sphere.center)).Scale(1.0 / sphere.radius)
-	record.set_face_normal(ray, record.normal)
-	record.material = sphere.material
-	return record, true
+	var rec Hit
+	rec.t = root
+	rec.point = ray.At(rec.t)
+	rec.normal = (rec.point.Sub(sphere.center)).Scale(1.0 / sphere.radius)
+	rec.set_face_normal(ray, rec.normal)
+	rec.material = sphere.material
+	rec.u, rec.v = get_sphere_uv(rec.normal)
+	return rec, true
 }
 
 // Return the Location of the sphere center at a given time if it's moving.
@@ -100,6 +102,21 @@ func (sphere *Sphere) sphere_center(time float64) Vec3 {
 // Returns the bounding box of the sphere
 func (sphere *Sphere) bounding_box() (bounds *AABB) {
 	return &sphere.bbox
+}
+
+// Get the UV coordinates relative to a sphere given a Vec3.
+// p: a given point on the sphere of radius one, centered at the origin.
+// u: returned value [0,1] of angle around the Y axis from X=-1.
+// v: returned value [0,1] of angle from Y=-1 to Y=+1.
+//
+//	<1 0 0> yields <0.50 0.50>       <-1  0  0> yields <0.00 0.50>
+//	<0 1 0> yields <0.50 1.00>       < 0 -1  0> yields <0.50 0.00>
+//	<0 0 1> yields <0.25 0.50>       < 0  0 -1> yields <0.75 0.50>
+func get_sphere_uv(point Vec3) (u, v float64) {
+	theta := math.Acos(-point[1])
+	phi := math.Atan2(-point[2], point[0]) + math.Pi
+
+	return phi / (2 * math.Pi), theta / math.Pi
 }
 
 func (sphere *Sphere) count() int {

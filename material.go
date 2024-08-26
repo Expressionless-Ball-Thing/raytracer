@@ -13,12 +13,16 @@ type Material interface {
 
 // Lambert describes a diffuse material.
 type Lambert struct {
-	Albedo Vec3
+	texture Texture
 }
 
 // NewLambert creates a new Lambert material with the given color.
 func NewLambert(albedo Vec3) *Lambert {
-	return &Lambert{Albedo: albedo}
+	return &Lambert{NewSolidTexture(albedo)}
+}
+
+func NewLambertTex(texture Texture) *Lambert {
+	return &Lambert{texture}
 }
 
 // Scatter scatters incoming light rays in a hemisphere about the normal.
@@ -30,7 +34,8 @@ func (lambert *Lambert) scatter(in Vec3, hit Hit) (out Vec3, attenuation Vec3, o
 	if scatter_direction.near_zero() {
 		scatter_direction = hit.normal
 	}
-	return scatter_direction, lambert.Albedo, true
+
+	return scatter_direction, lambert.texture.value(hit.u, hit.v, hit.point), true
 }
 
 // Metal

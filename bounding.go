@@ -1,7 +1,7 @@
 package main
 
 import (
-	"math/rand/v2"
+	"math"
 	"sort"
 )
 
@@ -12,7 +12,28 @@ type BVH struct {
 
 func NewBVHNode(objects []Hittable) *BVH {
 
+	// Build the bounding box of the span of source objects.
 	var node BVH
+	node.aabb = AABB{NewVec3(math.Inf(1), math.Inf(1), math.Inf(1)), NewVec3(math.Inf(-1), math.Inf(-1), math.Inf(-1))}
+	for _, v := range objects {
+		node.aabb = *MergeAABB(node.aabb, *v.bounding_box())
+	}
+
+	var longest int
+
+	if node.aabb.maxVec[0]-node.aabb.minVec[0] > node.aabb.maxVec[1]-node.aabb.minVec[1] {
+		if node.aabb.maxVec[0]-node.aabb.minVec[0] > node.aabb.maxVec[2]-node.aabb.minVec[2] {
+			longest = 0
+		} else {
+			longest = 2
+		}
+	} else {
+		if node.aabb.maxVec[1]-node.aabb.minVec[1] > node.aabb.maxVec[2]-node.aabb.minVec[2] {
+			longest = 1
+		} else {
+			longest = 2
+		}
+	}
 
 	if len(objects) == 1 {
 		node.left = &objects[0]
@@ -22,8 +43,7 @@ func NewBVHNode(objects []Hittable) *BVH {
 		node.right = &objects[1]
 	} else {
 		sort.Slice(objects, func(a, b int) bool {
-			randInt := int(2 * rand.Float64())
-			return objects[a].bounding_box().minVec[randInt] < objects[b].bounding_box().minVec[randInt]
+			return objects[a].bounding_box().minVec[longest] < objects[b].bounding_box().minVec[longest]
 		})
 
 		mid := len(objects) / 2
@@ -32,7 +52,7 @@ func NewBVHNode(objects []Hittable) *BVH {
 		var thing2 Hittable = NewBVHNode(objects[mid:])
 		node.right = &thing2
 	}
-	node.aabb = *MergeAABB(*(*node.left).bounding_box(), *(*node.right).bounding_box())
+
 	return &node
 }
 

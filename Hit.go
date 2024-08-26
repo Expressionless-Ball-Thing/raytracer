@@ -1,5 +1,7 @@
 package main
 
+import "math"
+
 type Hittable interface {
 
 	// Calculates whether a hit can be made with the object within the given bounds.
@@ -16,7 +18,8 @@ type Hit struct {
 	point      Vec3
 	normal     Vec3
 	t          float64
-	front_face bool // Hack way to check front_face or not Dot(&in, &n) < 0
+	u, v       float64 // surface coordinates of the ray-object hit point.
+	front_face bool    // Hack way to check front_face or not Dot(&in, &n) < 0
 	material   Material
 }
 
@@ -37,7 +40,9 @@ type Hit_List struct {
 }
 
 func NewList(objects ...Hittable) *Hit_List {
+
 	var list Hit_List
+	list.aabb = AABB{NewVec3(math.Inf(1), math.Inf(1), math.Inf(1)), NewVec3(math.Inf(-1), math.Inf(-1), math.Inf(-1))}
 	list.list = objects
 	for _, v := range objects {
 		list.aabb = *MergeAABB(list.aabb, *v.bounding_box())
