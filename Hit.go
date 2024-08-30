@@ -1,6 +1,8 @@
 package main
 
-import "math"
+import (
+	"math"
+)
 
 type Hittable interface {
 
@@ -9,8 +11,6 @@ type Hittable interface {
 	hit(ray *Ray, ray_tmin float64, ray_tmax float64) (record Hit, ok bool)
 
 	bounding_box() (bounds *AABB)
-
-	count() int
 }
 
 // Struct to store the details of a ray hitting a surface
@@ -75,10 +75,118 @@ func (list *Hit_List) hit(ray *Ray, ray_tmin float64, ray_tmax float64) (record 
 
 }
 
-func (list *Hit_List) count() int {
-	return len(list.list)
-}
-
 func (list *Hit_List) bounding_box() (bounds *AABB) {
 	return &list.aabb
+}
+
+type Translate struct {
+	object *Hittable
+	offset Vec3
+	bbox   AABB
+}
+
+func NewTranslate(object Hittable, offset Vec3) *Translate {
+	return &Translate{
+		object: &object,
+		offset: offset,
+		bbox:   *object.bounding_box().AddOffset(offset),
+	}
+}
+
+func (tran *Translate) hit(ray *Ray, ray_tmin float64, ray_tmax float64) (record Hit, ok bool) {
+	// Move the ray backwards by the offset
+	offset_ray := NewRay(ray.origin.Sub(tran.offset), ray.direction, ray.time)
+
+	// Determine whether an intersection exists along the offset ray (and if so, where)
+
+	if rec, ok2 := (*tran.object).hit(&offset_ray, ray_tmin, ray_tmax); ok2 {
+		rec.point.IAdd(tran.offset)
+		return rec, true
+	}
+
+	return record, false
+
+}
+
+func (tran *Translate) bounding_box() (bounds *AABB) {
+	return &tran.bbox
+}
+
+type Rotate struct {
+	object             *Hittable
+	alpha, beta, gamma float64 // Angles in Radians for Yaw, Pitch and roll
+	bbox               AABB
+}
+
+func NewRotate(object Hittable, alpha, beta, gamma float64) *Rotate {
+	var rotate Rotate
+
+	rotate.alpha = alpha * math.Pi / 180
+	rotate.beta = beta * math.Pi / 180
+	rotate.gamma = gamma * math.Pi / 180
+
+	rotate.object = &object
+	rotate.bbox = *object.bounding_box()
+
+	min := NewVec3(math.Inf(1), math.Inf(1), math.Inf(1))
+	max := NewVec3(math.Inf(-1), math.Inf(-1), math.Inf(-1))
+
+	// bbox calculations
+	for i := 0; i < 2; i++ {
+		for j := 0; j < 2; j++ {
+			for k := 0; k < 2; k++ {
+				x := float64(i)*rotate.bbox.maxVec[0] + (1-float64(i))*rotate.bbox.minVec[0]
+				y := float64(j)*rotate.bbox.maxVec[1] + (1-float64(j))*rotate.bbox.minVec[1]
+				z := float64(k)*rotate.bbox.maxVec[2] + (1-float64(k))*rotate.bbox.minVec[2]
+
+				tester := NewVec3(x, y, z).RotateGen(rotate.alpha, rotate.beta, rotate.gamma)
+
+				for c := 0; c < 3; c++ {
+					min[c] = math.Min(min[c], tester[c])
+					max[c] = math.Max(max[c], tester[c])
+				}
+			}
+		}
+	}
+
+	rotate.bbox = *NewAABB(min, max)
+	return &rotate
+}
+
+func (rot *Rotate) hit(ray *Ray, ray_tmin float64, ray_tmax float64) (record Hit, ok bool) {
+
+	origin, direction := ray.origin, ray.direction
+
+	// origin[0] = rot.cos_theta*ray.origin[0] - rot.sin_theta*ray.origin[2]
+	// origin[2] = rot.sin_theta*ray.origin[0] + rot.cos_theta*ray.origin[2]
+
+	origin = origin.RotateGen(-rot.alpha, -rot.beta, -rot.gamma)
+	direction = direction.RotateGen(-rot.alpha, -rot.beta, -rot.gamma)
+
+	rotated := NewRay(origin, direction, ray.time)
+
+	// Determine whether an intersection exists in object space (and if so, where)
+	rec, ok1 := (*rot.object).hit(&rotated, ray_tmin, ray_tmax)
+	if !ok1 {
+		return record, false
+	}
+
+	// Change the intersection point from object space to world space
+	point, normal := rec.point, rec.normal
+	// point[0] = rot.cos_theta*point[0] - rot.sin_theta*point[2]
+	// point[2] = rot.sin_theta*point[0] + rot.cos_theta*point[2]
+
+	// normal[0] = rot.cos_theta*normal[0] - rot.sin_theta*normal[2]
+	// normal[2] = rot.sin_theta*normal[0] + rot.cos_theta*normal[2]
+	point = point.RotateGen(-rot.alpha, -rot.beta, -rot.gamma)
+	normal = normal.RotateGen(-rot.alpha, -rot.beta, -rot.gamma)
+
+	rec.point = point
+	rec.normal = normal
+
+	return rec, true
+}
+
+func (rot *Rotate) bounding_box() (bounds *AABB) {
+	return &rot.bbox
 }

@@ -118,7 +118,3 @@ func get_sphere_uv(point Vec3) (u, v float64) {
 
 	return phi / (2 * math.Pi), theta / math.Pi
 }
-
-func (sphere *Sphere) count() int {
-	return 1
-}

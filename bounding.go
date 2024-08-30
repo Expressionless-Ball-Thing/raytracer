@@ -78,10 +78,6 @@ func (node *BVH) hit(ray *Ray, ray_tmin float64, ray_tmax float64) (record Hit, 
 
 }
 
-func (node *BVH) count() int {
-	return 1 + (*node.left).count() + (*node.right).count()
-}
-
 func (node *BVH) bounding_box() (bounds *AABB) {
 	return &node.aabb
 }

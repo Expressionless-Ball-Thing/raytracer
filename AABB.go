@@ -1,5 +1,7 @@
 package main
 
+import "math"
+
 type AABB struct {
 	minVec, maxVec Vec3 // Min and Max of the AABB, basically the intervals in the x, y and z intervals condensed together.
 }
@@ -16,6 +18,15 @@ func NewAABB(a, b Vec3) *AABB {
 		} else {
 			minVec[i] = a[i]
 			maxVec[i] = b[i]
+		}
+	}
+
+	delta := 0.0001
+
+	for i := 0; i < 3; i++ {
+		if maxVec[i]-minVec[i] < delta {
+			minVec[i] -= delta / 2
+			maxVec[i] += delta / 2
 		}
 	}
 
@@ -77,4 +88,17 @@ func (aabb *AABB) hit_test(ray *Ray, ray_tmin float64, ray_tmax float64) (ok boo
 	}
 
 	return true
+}
+
+// Modify AABB by an offset
+func (bbox *AABB) AddOffset(offset Vec3) *AABB {
+	return NewAABB(bbox.minVec.Add(offset), bbox.maxVec.Add(offset))
+}
+
+func NewEmptyAABB() *AABB {
+	return &AABB{NewVec3(math.Inf(1), math.Inf(1), math.Inf(1)), NewVec3(math.Inf(-1), math.Inf(-1), math.Inf(-1))}
+}
+
+func NewUniverseAABB() *AABB {
+	return &AABB{NewVec3(math.Inf(-1), math.Inf(-1), math.Inf(-1)), NewVec3(math.Inf(1), math.Inf(1), math.Inf(1))}
 }

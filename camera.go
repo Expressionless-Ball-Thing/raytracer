@@ -21,6 +21,7 @@ type camera struct {
 	sample_per_pixel               int     // Count of random samples for each pixel
 	pixel_samples_scale            float64 // Color scale factor for a sum of pixel samples
 	max_depth                      int     // Maximum number of ray bounces into scene
+	background                     Vec3    // Scene background color
 	vfov                           float64 // Vertical view angle (field of view) in degrees
 	lookfrom                       Vec3    // Point camera is looking from
 	lookat                         Vec3    // Point camera is looking at
@@ -34,7 +35,7 @@ type camera struct {
 // Makes a new camera given the aspect ratio and image width
 
 // image_width int, lookFrom, lookAt, vup Vec3, vfov, aspect_ratio, focus_distance, defocus_angle float64
-func NewCamera(image_width int, lookFrom, lookAt, vup Vec3, vfov, aspect_ratio, focus_distance, defocus_angle float64) (cam *camera) {
+func NewCamera(image_width int, lookFrom, lookAt, vup Vec3, vfov, aspect_ratio, focus_distance, defocus_angle float64, background Vec3) (cam *camera) {
 
 	var camera camera
 
@@ -47,6 +48,7 @@ func NewCamera(image_width int, lookFrom, lookAt, vup Vec3, vfov, aspect_ratio, 
 	camera.camera_center = lookFrom
 	camera.defocus_angle = defocus_angle
 	camera.focus_distance = focus_distance
+	camera.background = background
 
 	// Calculate the image height, and ensure that it's at least 1.
 	camera.image_height = int(float64(image_width) / float64(aspect_ratio))
@@ -93,17 +95,11 @@ func (cam *camera) render(world Hittable, sample_per_pixel, max_depth int) {
 
 	for j := 0; j < cam.image_height; j++ {
 		for i := 0; i < cam.image_width; i++ {
-
-			// The original way of doing things.
-			// pixel_center := cam.pixel00_loc.Add(cam.pixel_delta_u.Scale(float64(i)).Add(cam.pixel_delta_v.Scale(float64(j))))
-			// ray_direction := pixel_center.Sub(cam.camera_center)
-			// ray := NewRay(cam.camera_center, ray_direction)
-
 			pixel_color := Vec3{0, 0, 0}
 			// Loop for antialiasing
 			for sample := 0; sample < cam.sample_per_pixel; sample++ {
 				ray := cam.get_ray(float64(i), float64(j))
-				pixel_color.IAdd(ray_color(ray, cam.max_depth, world))
+				pixel_color.IAdd((*cam).ray_color(ray, cam.max_depth, world))
 			}
 
 			pixel_color.IScale(cam.pixel_samples_scale)
@@ -148,23 +144,37 @@ func (cam *camera) defocus_disk_sample() Vec3 {
 	return t.Add(cam.defocus_disk_v.Scale(p[1]))
 }
 
-func ray_color(ray Ray, depth int, world Hittable) Vec3 {
+func (camera *camera) ray_color(ray Ray, depth int, world Hittable) Vec3 {
 	// If we've exceeded the ray bounce limit, no more light is gathered.
 	if depth <= 0 {
 		return NewVec3(0, 0, 0)
 	}
 
-	if rec, ok := world.hit(&ray, 0.001, math.Inf(1)); ok {
-		if out, attenuation, ok := rec.material.scatter(ray.direction, rec); ok {
-			return attenuation.Mult(ray_color(NewRay(rec.point, out, ray.time), depth-1, world))
-		}
-		return NewVec3(0, 0, 0)
-
+	rec, ok := world.hit(&ray, 0.001, math.Inf(1))
+	if !ok {
+		return camera.background
 	}
 
-	unit_direction := ray.direction.Unit()
-	a := 0.5 * (unit_direction[1] + 1.0)
-	return (NewVec3(1, 1, 1).Scale(1.0 - a)).Add(NewVec3(0.5, 0.7, 1.0).Scale(a))
+	color_from_emission := rec.material.emitted(rec.u, rec.v, &rec.point)
+
+	out, attenuation, ok2 := rec.material.scatter(ray.direction, rec)
+	if !ok2 {
+		return color_from_emission
+	}
+	color_from_scatter := attenuation.Mult(camera.ray_color(NewRay(rec.point, out, ray.time), depth-1, world))
+	return color_from_emission.Add(color_from_scatter)
+
+	// if rec, ok := world.hit(&ray, 0.001, math.Inf(1)); ok {
+	// 	if out, attenuation, ok := rec.material.scatter(ray.direction, rec); ok {
+	// 		return attenuation.Mult(ray_color(NewRay(rec.point, out, ray.time), depth-1, world))
+	// 	}
+	// 	return NewVec3(0, 0, 0)
+
+	// }
+
+	// unit_direction := ray.direction.Unit()
+	// a := 0.5 * (unit_direction[1] + 1.0)
+	// return (NewVec3(1, 1, 1).Scale(1.0 - a)).Add(NewVec3(0.5, 0.7, 1.0).Scale(a))
 }
 
 func sample_square() Vec3 {

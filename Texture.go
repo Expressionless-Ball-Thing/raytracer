@@ -63,10 +63,10 @@ type Image struct {
 	width, height int
 }
 
-func NewImageTexture(rc io.Reader) (*Image, error) {
+func NewImageTexture(rc io.Reader) *Image {
 	im, err := png.Decode(rc)
 	if err != nil {
-		return nil, err
+		return nil
 	}
 
 	im.Bounds()
@@ -75,7 +75,7 @@ func NewImageTexture(rc io.Reader) (*Image, error) {
 		im,
 		im.Bounds().Max.X,
 		im.Bounds().Max.Y,
-	}, err
+	}
 
 }
 

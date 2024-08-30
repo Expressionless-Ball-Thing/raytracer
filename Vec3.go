@@ -171,3 +171,12 @@ func random_in_unit_disk() Vec3 {
 		}
 	}
 }
+
+// Rotation Matrix 3D, all should be radians
+func (v1 Vec3) RotateGen(alpha, beta, gamma float64) Vec3 {
+	return Vec3{
+		math.Cos(alpha)*math.Cos(beta)*v1[0] + (math.Cos(alpha)*math.Sin(beta)*math.Sin(gamma)-math.Sin(alpha)*math.Cos(gamma))*v1[1] + (math.Cos(alpha)*math.Sin(beta)*math.Cos(gamma)+math.Sin(alpha)*math.Sin(gamma))*v1[2],
+		math.Sin(alpha)*math.Cos(beta)*v1[0] + (math.Sin(alpha)*math.Sin(beta)*math.Sin(gamma)+math.Cos(alpha)*math.Cos(gamma))*v1[1] + (math.Sin(alpha)*math.Sin(beta)*math.Cos(gamma)-math.Cos(alpha)*math.Sin(gamma))*v1[2],
+		math.Sin(beta)*(-v1[0]) + (math.Cos(beta)*math.Sin(gamma))*v1[1] + (math.Cos(beta)*math.Cos(gamma))*v1[2],
+	}
+}
