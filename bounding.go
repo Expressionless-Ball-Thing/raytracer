@@ -14,7 +14,7 @@ func NewBVHNode(objects []Hittable) *BVH {
 
 	// Build the bounding box of the span of source objects.
 	var node BVH
-	node.aabb = AABB{NewVec3(math.Inf(1), math.Inf(1), math.Inf(1)), NewVec3(math.Inf(-1), math.Inf(-1), math.Inf(-1))}
+	node.aabb = AABB{*NewVec3(math.Inf(1), math.Inf(1), math.Inf(1)), *NewVec3(math.Inf(-1), math.Inf(-1), math.Inf(-1))}
 	for _, v := range objects {
 		node.aabb = *MergeAABB(node.aabb, *v.bounding_box())
 	}
@@ -56,25 +56,20 @@ func NewBVHNode(objects []Hittable) *BVH {
 	return &node
 }
 
-func (node *BVH) hit(ray *Ray, ray_tmin float64, ray_tmax float64) (record Hit, ok bool) {
+func (node *BVH) hit(ray *Ray, ray_tmin float64, ray_tmax float64, record *Hit) (ok bool) {
 	if !(node.aabb.hit_test(ray, ray_tmin, ray_tmax)) {
-		return record, false
+		return false
 	}
 
 	var hit_left, hit_right bool
-	record, hit_left = (*node.left).hit(ray, ray_tmin, ray_tmax)
-	var right_rec Hit
+	hit_left = (*node.left).hit(ray, ray_tmin, ray_tmax, record)
 	if hit_left {
-		right_rec, hit_right = (*node.right).hit(ray, ray_tmin, record.t)
+		hit_right = (*node.right).hit(ray, ray_tmin, record.t, record)
 	} else {
-		right_rec, hit_right = (*node.right).hit(ray, ray_tmin, ray_tmax)
+		hit_right = (*node.right).hit(ray, ray_tmin, ray_tmax, record)
 	}
 
-	if hit_right {
-		record = right_rec
-	}
-
-	return record, (hit_left || hit_right)
+	return (hit_left || hit_right)
 
 }
 

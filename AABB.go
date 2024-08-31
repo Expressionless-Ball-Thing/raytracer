@@ -92,13 +92,13 @@ func (aabb *AABB) hit_test(ray *Ray, ray_tmin float64, ray_tmax float64) (ok boo
 
 // Modify AABB by an offset
 func (bbox *AABB) AddOffset(offset Vec3) *AABB {
-	return NewAABB(bbox.minVec.Add(offset), bbox.maxVec.Add(offset))
+	return NewAABB(*bbox.minVec.Add(&offset), *bbox.maxVec.Add(&offset))
 }
 
 func NewEmptyAABB() *AABB {
-	return &AABB{NewVec3(math.Inf(1), math.Inf(1), math.Inf(1)), NewVec3(math.Inf(-1), math.Inf(-1), math.Inf(-1))}
+	return &AABB{*NewVec3(math.Inf(1), math.Inf(1), math.Inf(1)), *NewVec3(math.Inf(-1), math.Inf(-1), math.Inf(-1))}
 }
 
 func NewUniverseAABB() *AABB {
-	return &AABB{NewVec3(math.Inf(-1), math.Inf(-1), math.Inf(-1)), NewVec3(math.Inf(1), math.Inf(1), math.Inf(1))}
+	return &AABB{*NewVec3(math.Inf(-1), math.Inf(-1), math.Inf(-1)), *NewVec3(math.Inf(1), math.Inf(1), math.Inf(1))}
 }

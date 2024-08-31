@@ -30,16 +30,18 @@ func NewConstantMediumAlbedo(boundary *Hittable, density float64, albedo Vec3) *
 	}
 }
 
-func (constant *Constant) hit(ray *Ray, ray_tmin float64, ray_tmax float64) (record Hit, ok bool) {
+func (constant *Constant) hit(ray *Ray, ray_tmin float64, ray_tmax float64, record *Hit) (ok bool) {
 
-	rec1, ok1 := (*constant.boundary).hit(ray, math.Inf(-1), math.Inf(1))
+	var rec1, rec2 Hit
+
+	ok1 := (*constant.boundary).hit(ray, math.Inf(-1), math.Inf(1), &rec1)
 	if !ok1 {
-		return record, false
+		return false
 	}
 
-	rec2, ok2 := (*constant.boundary).hit(ray, rec1.t+0.0001, math.Inf(1))
+	ok2 := (*constant.boundary).hit(ray, rec1.t+0.0001, math.Inf(1), &rec2)
 	if !ok2 {
-		return record, false
+		return false
 	}
 
 	if rec1.t < ray_tmin {
@@ -50,7 +52,7 @@ func (constant *Constant) hit(ray *Ray, ray_tmin float64, ray_tmax float64) (rec
 	}
 
 	if rec1.t >= rec2.t {
-		return record, false
+		return false
 	}
 
 	if rec1.t < 0 {
@@ -62,18 +64,17 @@ func (constant *Constant) hit(ray *Ray, ray_tmin float64, ray_tmax float64) (rec
 	hit_distance := constant.neg_inv_density * math.Log(rand.Float64())
 
 	if hit_distance > distance_inside_boundary {
-		return record, false
+		return false
 	}
 
-	var rec Hit
-	rec.t = rec1.t + (hit_distance / ray_length)
-	rec.point = ray.At(rec.t)
+	record.t = rec1.t + (hit_distance / ray_length)
+	record.point = ray.At(record.t)
 
-	rec.normal = NewVec3(1, 0, 0) // arbitrary
-	rec.front_face = true         // arbitrary
-	rec.material = *constant.phase_function
+	record.normal = *NewVec3(1, 0, 0) // arbitrary
+	record.front_face = true          // arbitrary
+	record.material = constant.phase_function
 
-	return rec, true
+	return true
 }
 
 func (constant *Constant) bounding_box() (bounds *AABB) {

@@ -15,7 +15,7 @@ var (
 
 func perlin() {
 	for i := 0; i < point_count; i++ {
-		randVec3[i] = NewVec3Random(-1, 1).Unit()
+		randVec3[i] = *NewVec3Random(-1, 1).Unit()
 	}
 
 	perlin_generate_perm(permX)
@@ -75,7 +75,7 @@ func trillinear_interp(c *[2][2][2]Vec3, u, v, w float64) float64 {
 		for j := 0; j < 2; j++ {
 			for k := 0; k < 2; k++ {
 				weight_v := NewVec3(u-float64(i), v-float64(j), w-float64(k))
-				accum += (float64(i)*uu + (1-float64(i))*(1-uu)) * (float64(j)*vv + (1-float64(j))*(1-vv)) * (float64(k)*ww + (1-float64(k))*(1-ww)) * Dot(c[i][j][k], weight_v)
+				accum += (float64(i)*uu + (1-float64(i))*(1-uu)) * (float64(j)*vv + (1-float64(j))*(1-vv)) * (float64(k)*ww + (1-float64(k))*(1-ww)) * Dot(&c[i][j][k], weight_v)
 			}
 		}
 	}
@@ -91,7 +91,7 @@ func turbulence(point Vec3, depth int) float64 {
 	for i := 0; i < depth; i++ {
 		accum += (weight * noise(temp_p))
 		weight *= 0.5
-		temp_p = temp_p.Scale(2)
+		temp_p = *temp_p.Scale(2)
 	}
 
 	return math.Abs(accum)

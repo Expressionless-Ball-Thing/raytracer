@@ -3,3 +3,5 @@ raytracer.exe
 
 *.png
 *.jpg
+*.pprof
+*.dot

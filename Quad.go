@@ -15,59 +15,56 @@ type Quad struct {
 }
 
 // Create a new Quadrilaterial plane Given a point and two direction vectors
-func NewQuad(Q Vec3, u, v Vec3, material *Material) *Quad {
+func NewQuad(Q *Vec3, u, v *Vec3, material *Material) *Quad {
 	n := Cross(u, v)
 	normal := n.Unit()
 	return &Quad{
-		Q:        Q,
-		u:        u,
-		v:        v,
-		w:        n.Scale(1 / (Dot(n, n))),
+		Q:        *Q,
+		u:        *u,
+		v:        *v,
+		w:        *n.Scale(1 / (Dot(n, n))),
 		material: material,
-		normal:   normal,
+		normal:   *normal,
 		D:        Dot(normal, Q),
 		// Compute the bounding box of all four vertices.
-		bbox: *MergeAABB(*NewAABB(Q, Q.Add(u).Add(v)), *NewAABB(Q.Add(u), Q.Add(v))),
+		bbox: *MergeAABB(*NewAABB(*Q, *Q.Add(u).Add(v)), *NewAABB(*Q.Add(u), *Q.Add(v))),
 	}
 }
 
 // If you do the path for a ray intersecting with a plane (tip, represent the plane in point normal form)
 // You will find that the intersections t is equal to t = (D - n.P)/(n.d)
 // where n is the normal, P and d are the origin point and direction of the Ray, D is n.v, where v is the point of intersection.
-func (quad *Quad) hit(ray *Ray, ray_tmin float64, ray_tmax float64) (record Hit, ok bool) {
-	denom := Dot(quad.normal, ray.direction)
+func (quad *Quad) hit(ray *Ray, ray_tmin float64, ray_tmax float64, record *Hit) (ok bool) {
+	denom := Dot(&quad.normal, &ray.direction)
 
 	// No hit if the ray is parallel to the plane.
 	if math.Abs(denom) < 1e-8 {
-		return record, false
+		return false
 	}
 
 	// Return false if the hit point parameter t is outside the ray interval.
-	t := (quad.D - Dot(quad.normal, ray.origin)) / denom
+	t := (quad.D - Dot(&quad.normal, &ray.origin)) / denom
 	if t <= ray_tmin || t >= ray_tmax {
-		return record, false
+		return false
 	}
 
 	// Determine if the hit point lies within the planar shape using its plane coordinates.
 	intersection := ray.At(t)
-	planar_hitpt_vector := intersection.Sub(quad.Q) // P - Q basically
-	alpha := Dot(quad.w, Cross(planar_hitpt_vector, quad.v))
-	beta := Dot(quad.w, Cross(quad.u, planar_hitpt_vector))
+	planar_hitpt_vector := intersection.Sub(&quad.Q) // P - Q basically
+	alpha := Dot(&quad.w, Cross(planar_hitpt_vector, &quad.v))
+	beta := Dot(&quad.w, Cross(&quad.u, planar_hitpt_vector))
 
 	//return false if it is outside the primitive, otherwise set the hit record UV coordinates and return true.
 	if alpha < 0 || alpha > 1 || beta < 0 || beta > 1 {
-		return record, false
+		return false
 	}
-
-	var rec Hit
-	rec.u = alpha
-	rec.v = beta
-	rec.t = t
-	rec.point = intersection
-	rec.material = *quad.material
-	rec.set_face_normal(ray, rec.normal)
-	return rec, true
-
+	record.u = alpha
+	record.v = beta
+	record.t = t
+	record.point = intersection
+	record.material = quad.material
+	record.set_face_normal(ray, record.normal)
+	return true
 }
 
 func (quad *Quad) bounding_box() (bounds *AABB) {

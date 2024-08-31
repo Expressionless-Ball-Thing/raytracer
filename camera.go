@@ -63,21 +63,21 @@ func NewCamera(image_width int, lookFrom, lookAt, vup Vec3, vfov, aspect_ratio, 
 	viewport_width := viewport_height * (float64(camera.image_width) / float64(camera.image_height))
 
 	// Calculate the u,v,w unit basis vectors for the camera coordinate frame.
-	camera.w = lookFrom.Sub(lookAt).Unit()
-	camera.u = Cross(vup, camera.w).Unit()
-	camera.v = Cross(camera.w, camera.u)
+	camera.w = *lookFrom.Sub(&lookAt).Unit()
+	camera.u = *Cross(&vup, &camera.w).Unit()
+	camera.v = *Cross(&camera.w, &camera.u)
 
 	// Calculate the vectors across the horizontal and down the vertical viewport edges.
 	viewport_u := camera.u.Scale(viewport_width)
 	viewport_v := camera.v.Scale(-viewport_height)
 
 	// Calculate the horizontal and vertical delta vectors from pixel to pixel.
-	camera.pixel_delta_u = viewport_u.Scale(1.0 / float64(camera.image_width))
-	camera.pixel_delta_v = viewport_v.Scale(1.0 / float64(camera.image_height))
+	camera.pixel_delta_u = *viewport_u.Scale(1.0 / float64(camera.image_width))
+	camera.pixel_delta_v = *viewport_v.Scale(1.0 / float64(camera.image_height))
 
 	// Calculate the location of the upper left pixel.
 	viewport_upper_left := camera.camera_center.Sub(camera.w.Scale(camera.focus_distance)).Sub(viewport_u.Scale(0.5)).Sub(viewport_v.Scale(0.5))
-	camera.pixel00_loc = viewport_upper_left.Add((camera.pixel_delta_u.Add(camera.pixel_delta_v)).Scale(0.5))
+	camera.pixel00_loc = *viewport_upper_left.Add((camera.pixel_delta_u.Add(&camera.pixel_delta_v)).Scale(0.5))
 
 	return &camera
 }
@@ -101,10 +101,9 @@ func (cam *camera) render(world Hittable, sample_per_pixel, max_depth int) {
 				ray := cam.get_ray(float64(i), float64(j))
 				pixel_color.IAdd((*cam).ray_color(ray, cam.max_depth, world))
 			}
-
 			pixel_color.IScale(cam.pixel_samples_scale)
 
-			pixel_color = pixel_color.Gamma(2)
+			pixel_color = *pixel_color.Gamma(2)
 
 			img.Set(i, j, color.NRGBA{
 				uint8(255 * clamp(pixel_color[0])),
@@ -132,49 +131,38 @@ func (cam *camera) get_ray(i float64, j float64) Ray {
 	if cam.defocus_angle > 0 {
 		ray_origin = cam.defocus_disk_sample()
 	}
-	ray_direction := pixel_sample.Sub(ray_origin)
+	ray_direction := pixel_sample.Sub(&ray_origin)
 	ray_time := rand.Float64()
 
-	return Ray{ray_origin, ray_direction, ray_time}
+	return Ray{ray_origin, *ray_direction, ray_time}
 }
 
 func (cam *camera) defocus_disk_sample() Vec3 {
 	p := random_in_unit_disk()
 	t := cam.camera_center.Add(cam.defocus_disk_u.Scale(p[0]))
-	return t.Add(cam.defocus_disk_v.Scale(p[1]))
+	return *t.Add(cam.defocus_disk_v.Scale(p[1]))
 }
 
-func (camera *camera) ray_color(ray Ray, depth int, world Hittable) Vec3 {
+func (camera *camera) ray_color(ray Ray, depth int, world Hittable) *Vec3 {
 	// If we've exceeded the ray bounce limit, no more light is gathered.
 	if depth <= 0 {
 		return NewVec3(0, 0, 0)
 	}
 
-	rec, ok := world.hit(&ray, 0.001, math.Inf(1))
-	if !ok {
-		return camera.background
+	var rec Hit
+	if !world.hit(&ray, 0.001, math.Inf(1), &rec) {
+		return &camera.background
 	}
+	color_from_emission := (*rec.material).emitted(rec.u, rec.v, &rec.point)
 
-	color_from_emission := rec.material.emitted(rec.u, rec.v, &rec.point)
-
-	out, attenuation, ok2 := rec.material.scatter(ray.direction, rec)
+	var attenuation Vec3
+	var out Vec3
+	ok2 := (*rec.material).scatter(&ray.direction, &rec, (&attenuation), (&out))
 	if !ok2 {
-		return color_from_emission
+		return &color_from_emission
 	}
 	color_from_scatter := attenuation.Mult(camera.ray_color(NewRay(rec.point, out, ray.time), depth-1, world))
 	return color_from_emission.Add(color_from_scatter)
-
-	// if rec, ok := world.hit(&ray, 0.001, math.Inf(1)); ok {
-	// 	if out, attenuation, ok := rec.material.scatter(ray.direction, rec); ok {
-	// 		return attenuation.Mult(ray_color(NewRay(rec.point, out, ray.time), depth-1, world))
-	// 	}
-	// 	return NewVec3(0, 0, 0)
-
-	// }
-
-	// unit_direction := ray.direction.Unit()
-	// a := 0.5 * (unit_direction[1] + 1.0)
-	// return (NewVec3(1, 1, 1).Scale(1.0 - a)).Add(NewVec3(0.5, 0.7, 1.0).Scale(a))
 }
 
 func sample_square() Vec3 {
