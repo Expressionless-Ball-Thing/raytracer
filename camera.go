@@ -99,11 +99,9 @@ func (cam *camera) render(world Hittable, sample_per_pixel, max_depth int) {
 			// Loop for antialiasing
 			for sample := 0; sample < cam.sample_per_pixel; sample++ {
 				ray := cam.get_ray(float64(i), float64(j))
-				pixel_color.IAdd((*cam).ray_color(ray, cam.max_depth, world))
+				pixel_color = *pixel_color.Add((*cam).ray_color(ray, cam.max_depth, world))
 			}
-			pixel_color.IScale(cam.pixel_samples_scale)
-
-			pixel_color = *pixel_color.Gamma(2)
+			pixel_color = *pixel_color.Scale(cam.pixel_samples_scale).Gamma(2)
 
 			img.Set(i, j, color.NRGBA{
 				uint8(255 * clamp(pixel_color[0])),
@@ -150,18 +148,18 @@ func (camera *camera) ray_color(ray Ray, depth int, world Hittable) *Vec3 {
 	}
 
 	var rec Hit
-	if !world.hit(&ray, 0.001, math.Inf(1), &rec) {
+	if !world.hit(&ray, 0.001, math.MaxFloat64, &rec) {
 		return &camera.background
 	}
-	color_from_emission := (*rec.material).emitted(rec.u, rec.v, &rec.point)
 
 	var attenuation Vec3
-	var out Vec3
-	ok2 := (*rec.material).scatter(&ray.direction, &rec, (&attenuation), (&out))
-	if !ok2 {
+	var scattered Ray
+	color_from_emission := (*rec.material).emitted(rec.u, rec.v, &rec.point)
+
+	if !(*rec.material).scatter(&ray, &rec, &attenuation, &scattered) {
 		return &color_from_emission
 	}
-	color_from_scatter := attenuation.Mult(camera.ray_color(NewRay(rec.point, out, ray.time), depth-1, world))
+	color_from_scatter := (camera.ray_color(scattered, depth-1, world)).Mult(&attenuation)
 	return color_from_emission.Add(color_from_scatter)
 }
 

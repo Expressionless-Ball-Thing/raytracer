@@ -58,15 +58,13 @@ func (list *Hit_List) Add(hittable ...Hittable) {
 
 // See if the ray hits anything in the list of hittable things, and update record with the object closest to the camera.
 func (list *Hit_List) hit(ray *Ray, ray_tmin float64, ray_tmax float64, record *Hit) bool {
-	var temp Hit
 	closest_so_far := ray_tmax
 	anything := false
 	for _, object := range list.list {
 		// We want the object closest to the camera
-		if object.hit(ray, ray_tmin, closest_so_far, &temp) {
+		if object.hit(ray, ray_tmin, closest_so_far, record) {
 			anything = true
-			closest_so_far = temp.t
-			*record = temp
+			closest_so_far = record.t
 		}
 	}
 
@@ -98,12 +96,12 @@ func (tran *Translate) hit(ray *Ray, ray_tmin float64, ray_tmax float64, record 
 
 	// Determine whether an intersection exists along the offset ray (and if so, where)
 
-	if ok2 := (*tran.object).hit(&offset_ray, ray_tmin, ray_tmax, record); ok2 {
-		record.point.IAdd(&tran.offset)
-		return true
+	if !(*tran.object).hit(&offset_ray, ray_tmin, ray_tmax, record) {
+		return false
 	}
 
-	return false
+	record.point = *record.point.Add(&tran.offset)
+	return true
 
 }
 
@@ -112,17 +110,24 @@ func (tran *Translate) bounding_box() (bounds *AABB) {
 }
 
 type Rotate struct {
-	object             *Hittable
-	alpha, beta, gamma float64 // Angles in Radians for Yaw, Pitch and roll
-	bbox               AABB
+	object                                                         *Hittable
+	alpha_cos, beta_cos, gamma_cos, alpha_sin, beta_sin, gamma_sin float64 // Cos and Sine in Radians for Yaw, Pitch and roll
+	bbox                                                           AABB
 }
 
 func NewRotate(object Hittable, alpha, beta, gamma float64) *Rotate {
 	var rotate Rotate
 
-	rotate.alpha = alpha * math.Pi / 180
-	rotate.beta = beta * math.Pi / 180
-	rotate.gamma = gamma * math.Pi / 180
+	temp_alpha := alpha * math.Pi / 180
+	temp_beta := beta * math.Pi / 180
+	temp_gamma := gamma * math.Pi / 180
+
+	rotate.alpha_cos = math.Cos(temp_alpha)
+	rotate.alpha_sin = math.Sin(temp_alpha)
+	rotate.beta_cos = math.Cos(temp_beta)
+	rotate.beta_sin = math.Sin(temp_beta)
+	rotate.gamma_cos = math.Cos(temp_gamma)
+	rotate.gamma_sin = math.Sin(temp_gamma)
 
 	rotate.object = &object
 	rotate.bbox = *object.bounding_box()
@@ -138,7 +143,7 @@ func NewRotate(object Hittable, alpha, beta, gamma float64) *Rotate {
 				y := float64(j)*rotate.bbox.maxVec[1] + (1-float64(j))*rotate.bbox.minVec[1]
 				z := float64(k)*rotate.bbox.maxVec[2] + (1-float64(k))*rotate.bbox.minVec[2]
 
-				tester := NewVec3(x, y, z).RotateGen(rotate.alpha, rotate.beta, rotate.gamma)
+				tester := rotate.RotateClockwise(NewVec3(x, y, z))
 
 				for c := 0; c < 3; c++ {
 					min[c] = math.Min(min[c], tester[c])
@@ -156,11 +161,8 @@ func (rot *Rotate) hit(ray *Ray, ray_tmin float64, ray_tmax float64, record *Hit
 
 	origin, direction := ray.origin, ray.direction
 
-	// origin[0] = rot.cos_theta*ray.origin[0] - rot.sin_theta*ray.origin[2]
-	// origin[2] = rot.sin_theta*ray.origin[0] + rot.cos_theta*ray.origin[2]
-
-	origin = *origin.RotateGen(-rot.alpha, -rot.beta, -rot.gamma)
-	direction = *direction.RotateGen(-rot.alpha, -rot.beta, -rot.gamma)
+	origin = *rot.RotateClockwise(&origin)
+	direction = *rot.RotateClockwise(&direction)
 
 	rotated := NewRay(origin, direction, ray.time)
 
@@ -172,8 +174,8 @@ func (rot *Rotate) hit(ray *Ray, ray_tmin float64, ray_tmax float64, record *Hit
 	// Change the intersection point from object space to world space
 	point, normal := record.point, record.normal
 
-	point = *point.RotateGen(-rot.alpha, -rot.beta, -rot.gamma)
-	normal = *normal.RotateGen(-rot.alpha, -rot.beta, -rot.gamma)
+	point = *rot.RotateClockwise(&point)
+	normal = *rot.RotateClockwise(&normal)
 
 	record.point = point
 	record.normal = normal

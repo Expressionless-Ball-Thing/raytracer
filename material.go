@@ -10,8 +10,8 @@ type Material interface {
 	// Calcuate the light color emitted from that point
 	emitted(u, v float64, point *Vec3) Vec3
 
-	// Given incident direction and the Normal of the surface, calculate the scattered direction and the attenuation
-	scatter(in *Vec3, hit *Hit, attenuation *Vec3, out *Vec3) bool
+	// Given incident ray and the Normal of the surface, calculate the scattered ray and the attenuation
+	scatter(incident *Ray, hit *Hit, attenuation *Vec3, scattered *Ray) bool
 }
 
 // Lambert describes a diffuse material.
@@ -31,16 +31,16 @@ func NewLambertTex(texture *Texture) *Material {
 }
 
 // Scatter scatters incoming light rays in a hemisphere about the normal.
-func (lambert *Lambert) scatter(in *Vec3, hit *Hit, attenuation *Vec3, out *Vec3) bool {
+func (lambert *Lambert) scatter(incident *Ray, hit *Hit, attenuation *Vec3, scattered *Ray) bool {
 
 	// TODO: scatter with some fixed probability p and have attenuation be albedo/p .
 
 	scatter_direction := hit.normal.Add(Random_unit_Vec3()) // added a normal vector to make it closer to the surface normal
 	if scatter_direction.near_zero() {
-		scatter_direction = &hit.normal
+		*scatter_direction = hit.normal
 	}
 
-	*out = *scatter_direction
+	*scattered = NewRay(hit.point, *scatter_direction, incident.time)
 	*attenuation = (*lambert.texture).value(hit.u, hit.v, hit.point)
 
 	return true
@@ -62,11 +62,12 @@ func NewMetal(albedo Vec3, fuzz float64) *Material {
 	return &metal
 }
 
-func (metal *Metal) scatter(in *Vec3, hit *Hit, attenuation *Vec3, out *Vec3) bool {
+func (metal *Metal) scatter(incident *Ray, hit *Hit, attenuation *Vec3, scattered *Ray) bool {
 
-	*out = *Reflect(in, &hit.normal).Unit().Add(Random_unit_Vec3().Scale(metal.fuzz)) // Adding some fuzz to make the reflections look fuzzy
+	reflected := *Reflect(&incident.direction, &hit.normal).Unit().Add(Random_unit_Vec3().Scale(metal.fuzz)) // Adding some fuzz to make the reflections look fuzzy
+	*scattered = NewRay(hit.point, reflected, incident.time)
 	*attenuation = metal.albedo
-	return (Dot(out, &hit.normal) > 0)
+	return (Dot(&scattered.direction, &hit.normal) > 0)
 }
 
 func (metal *Metal) emitted(u, v float64, point *Vec3) Vec3 {
@@ -83,7 +84,7 @@ func NewDielectric(refraction_index float64) *Material {
 	return &dielectric
 }
 
-func (dielec *Dielectric) scatter(in *Vec3, hit *Hit, attenuation *Vec3, out *Vec3) bool {
+func (dielec *Dielectric) scatter(incident *Ray, hit *Hit, attenuation *Vec3, scattered *Ray) bool {
 
 	*attenuation = *NewVec3(1, 1, 1)
 
@@ -94,20 +95,21 @@ func (dielec *Dielectric) scatter(in *Vec3, hit *Hit, attenuation *Vec3, out *Ve
 		ri = dielec.refraction_index
 	}
 
-	unit_direction := in.Unit()
-
+	unit_direction := incident.direction.Unit()
 	cos_theta := math.Min(Dot(unit_direction.Negate(), &hit.normal), 1.0)
 	sin_theta := math.Sqrt(1 - cos_theta*cos_theta)
 
 	cannot_refract := ri*sin_theta > 1.0
 
+	var direction Vec3
 	// Decide if the ray goes through total internal refraction.
 	if cannot_refract || reflectance(cos_theta, ri) > rand.Float64() {
-		*out = *Reflect(unit_direction, &hit.normal)
+		direction = *Reflect(unit_direction, &hit.normal)
 	} else {
-		*out = *Refract(unit_direction, &hit.normal, ri)
+		direction = *Refract(unit_direction, &hit.normal, ri)
 	}
 
+	*scattered = NewRay(hit.point, direction, incident.time)
 	return true
 }
 
@@ -152,7 +154,7 @@ func (diffuse *DiffuseLight) emitted(u, v float64, point *Vec3) Vec3 {
 	return (*diffuse.texture).value(u, v, *point)
 }
 
-func (diffuse *DiffuseLight) scatter(in *Vec3, hit *Hit, attenuation *Vec3, out *Vec3) bool {
+func (diffuse *DiffuseLight) scatter(incident *Ray, hit *Hit, attenuation *Vec3, scattered *Ray) bool {
 	return false
 }
 
@@ -178,8 +180,8 @@ func (iso *Isotropic) emitted(u, v float64, point *Vec3) Vec3 {
 	return *NewVec3(0, 0, 0)
 }
 
-func (iso *Isotropic) scatter(in *Vec3, hit *Hit, attenuation *Vec3, out *Vec3) bool {
-	*out = *Random_unit_Vec3()
+func (iso *Isotropic) scatter(incident *Ray, hit *Hit, attenuation *Vec3, scattered *Ray) bool {
+	*scattered = NewRay(hit.point, *Random_unit_Vec3(), incident.time)
 	*attenuation = (*iso.tex).value(hit.u, hit.v, hit.point)
 	return true
 }

@@ -44,7 +44,7 @@ func (quad *Quad) hit(ray *Ray, ray_tmin float64, ray_tmax float64, record *Hit)
 
 	// Return false if the hit point parameter t is outside the ray interval.
 	t := (quad.D - Dot(&quad.normal, &ray.origin)) / denom
-	if t <= ray_tmin || t >= ray_tmax {
+	if t < ray_tmin || t > ray_tmax {
 		return false
 	}
 
@@ -63,7 +63,7 @@ func (quad *Quad) hit(ray *Ray, ray_tmin float64, ray_tmax float64, record *Hit)
 	record.t = t
 	record.point = intersection
 	record.material = quad.material
-	record.set_face_normal(ray, record.normal)
+	record.set_face_normal(ray, quad.normal)
 	return true
 }
 

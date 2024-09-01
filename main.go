@@ -5,6 +5,8 @@ import (
 	"math/rand/v2"
 	"os"
 	"time"
+
+	"github.com/pkg/profile"
 )
 
 func bouncing_spheres() {
@@ -50,10 +52,6 @@ func bouncing_spheres() {
 
 	mat3 := NewMetal(*NewVec3(0.7, 0.6, 0.5), 0.0)
 	world.Add(NewSphere(*NewVec3(4, 1, 0), 1.0, mat3))
-
-	// var node Hittable = NewBVHNode(world.list)
-	// world.list
-	// world.aabb = *thing.bounding_box()
 
 	cam := NewCamera(1200, *NewVec3(13, 2, 3), *NewVec3(0, 0, 0), *NewVec3(0, 1, 0), 20, 16.0/9.0, 10.0, 0.6, *NewVec3(0.7, 0.8, 1.0))
 	cam.render(&world, 100, 10)
@@ -155,16 +153,8 @@ func cornell_box() {
 	world.Add(NewQuad(NewVec3(0, 0, 0), NewVec3(555, 0, 0), NewVec3(0, 0, 555), white))
 	world.Add(NewQuad(NewVec3(555, 555, 555), NewVec3(-555, 0, 0), NewVec3(0, 0, -555), white))
 	world.Add(NewQuad(NewVec3(0, 0, 555), NewVec3(555, 0, 0), NewVec3(0, 555, 0), white))
-
-	// var box1 Hittable = NewBox(*NewVec3(0, 0, 0), *NewVec3(165, 330, 165), white)
-	// box1 = NewRotate(box1, 0, 15, 0)
-	// box1 = NewTranslate(box1, *NewVec3(265, 0, 295))
-	// world.Add(box1)
-
-	// var box2 Hittable = NewBox(*NewVec3(0, 0, 0), *NewVec3(165, 165, 165), white)
-	// box2 = NewRotate(box2, 0, -18, 0)
-	// box2 = NewTranslate(box2, *NewVec3(130, 0, 65))
-	// world.Add(box2)
+	world.Add(NewTranslate(NewRotate(NewBox(*NewVec3(0, 0, 0), *NewVec3(165, 330, 165), white), 0, 15, 0), *NewVec3(265, 0, 295)))
+	world.Add(NewTranslate(NewRotate(NewBox(*NewVec3(0, 0, 0), *NewVec3(165, 165, 165), white), 0, -18, 0), *NewVec3(130, 0, 65)))
 
 	cam := NewCamera(600, *NewVec3(278, 278, -800), *NewVec3(278, 278, 0), *NewVec3(0, 1, 0), 40, 1, 1, 0, *NewVec3(0, 0, 0))
 	cam.render(&world, 200, 50)
@@ -193,7 +183,6 @@ func cornell_smoke() {
 
 	var box2 Hittable = NewBox(*NewVec3(0, 0, 0), *NewVec3(165, 165, 165), white)
 	box2 = NewRotate(box2, 0, -18, 0)
-	// box1 = NewRotate(box2, -18)
 	box2 = NewTranslate(box2, *NewVec3(130, 0, 65))
 	world.Add(NewConstantMediumAlbedo(&box2, 0.01, *NewVec3(1, 1, 1)))
 	world.Add(box2)
@@ -276,6 +265,8 @@ func final_scene(image_width, samples_per_pixel, max_depth int) {
 }
 
 func main() {
+	wd, _ := os.Getwd()
+	defer profile.Start(profile.ProfilePath(wd)).Stop()
 	start := time.Now()
 	switch 7 {
 	case 1:

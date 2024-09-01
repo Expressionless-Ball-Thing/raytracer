@@ -137,8 +137,12 @@ func Random_float64_bounded(min float64, max float64) float64 {
 
 // Generates a random unit Vec3 with length of 1.
 func Random_unit_Vec3() *Vec3 {
-	t := RandomVec3(-1, 1)
-	return t.Unit()
+	for {
+		t := RandomVec3(-1, 1)
+		if t.Length_Squared() < 1 {
+			return t.Unit()
+		}
+	}
 }
 
 func Random_on_hemisphere(normal *Vec3) *Vec3 {
@@ -178,5 +182,21 @@ func (v1 Vec3) RotateGen(alpha, beta, gamma float64) *Vec3 {
 		math.Cos(alpha)*math.Cos(beta)*v1[0] + (math.Cos(alpha)*math.Sin(beta)*math.Sin(gamma)-math.Sin(alpha)*math.Cos(gamma))*v1[1] + (math.Cos(alpha)*math.Sin(beta)*math.Cos(gamma)+math.Sin(alpha)*math.Sin(gamma))*v1[2],
 		math.Sin(alpha)*math.Cos(beta)*v1[0] + (math.Sin(alpha)*math.Sin(beta)*math.Sin(gamma)+math.Cos(alpha)*math.Cos(gamma))*v1[1] + (math.Sin(alpha)*math.Sin(beta)*math.Cos(gamma)-math.Cos(alpha)*math.Sin(gamma))*v1[2],
 		math.Sin(beta)*(-v1[0]) + (math.Cos(beta)*math.Sin(gamma))*v1[1] + (math.Cos(beta)*math.Cos(gamma))*v1[2],
+	}
+}
+
+func (rotate *Rotate) RotateAntiClockWise(v1 *Vec3) *Vec3 {
+	return &Vec3{
+		rotate.alpha_cos*rotate.beta_cos*v1[0] + (rotate.alpha_cos*rotate.beta_sin*rotate.gamma_sin-rotate.alpha_sin*rotate.gamma_cos)*v1[1] + (rotate.alpha_cos*rotate.beta_sin*rotate.gamma_cos+rotate.alpha_sin*rotate.gamma_sin)*v1[2],
+		rotate.alpha_sin*rotate.beta_cos*v1[0] + (rotate.alpha_sin*rotate.beta_sin*rotate.gamma_sin+rotate.alpha_cos*rotate.gamma_cos)*v1[1] + (rotate.alpha_sin*rotate.beta_sin*rotate.gamma_cos-rotate.alpha_cos*rotate.gamma_sin)*v1[2],
+		rotate.beta_sin*(-v1[0]) + (rotate.beta_cos*rotate.gamma_sin)*v1[1] + (rotate.beta_cos * rotate.gamma_cos * v1[2]),
+	}
+}
+
+func (rotate *Rotate) RotateClockwise(v1 *Vec3) *Vec3 {
+	return &Vec3{
+		rotate.alpha_cos*rotate.beta_cos*v1[0] + (rotate.alpha_cos*rotate.beta_sin*rotate.gamma_sin+rotate.alpha_sin*rotate.gamma_cos)*v1[1] + (-rotate.alpha_cos*rotate.beta_sin*rotate.gamma_cos+rotate.alpha_sin*rotate.gamma_sin)*v1[2],
+		-rotate.alpha_sin*rotate.beta_cos*v1[0] + (-rotate.alpha_sin*rotate.beta_sin*rotate.gamma_sin+rotate.alpha_cos*rotate.gamma_cos)*v1[1] + (rotate.alpha_sin*rotate.beta_sin*rotate.gamma_cos+rotate.alpha_cos*rotate.gamma_sin)*v1[2],
+		rotate.beta_sin*(v1[0]) - (rotate.beta_cos*rotate.gamma_sin)*v1[1] + (rotate.beta_cos * rotate.gamma_cos * v1[2]),
 	}
 }
