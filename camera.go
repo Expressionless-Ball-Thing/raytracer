@@ -8,6 +8,7 @@ import (
 	"math"
 	"math/rand/v2"
 	"os"
+	"runtime"
 )
 
 type camera struct {
@@ -82,34 +83,69 @@ func NewCamera(image_width int, lookFrom, lookAt, vup Vec3, vfov, aspect_ratio, 
 	return &camera
 }
 
+type result struct {
+	rownum     int
+	pixel_list []Vec3
+}
+
 // Render the scene
 // world Hittable, sample_per_pixel, max_depth int
+// Parallized row by row as well using a worker pool, model is based on this https://gobyexample.com/worker-pools
 func (cam *camera) render(world Hittable, sample_per_pixel, max_depth int) {
 	cam.sample_per_pixel = sample_per_pixel
 	cam.max_depth = max_depth
 	cam.pixel_samples_scale = 1.0 / float64(cam.sample_per_pixel)
 
+	jobs := make(chan int, cam.image_height)         // Job channel, indicates the row number
+	results := make(chan result, cam.image_height*2) // Results channel
+
 	upLeft := image.Point{0, 0}
 	lowRight := image.Point{cam.image_width, cam.image_height}
 	img := image.NewNRGBA(image.Rectangle{upLeft, lowRight})
 
-	for j := 0; j < cam.image_height; j++ {
-		for i := 0; i < cam.image_width; i++ {
-			pixel_color := Vec3{0, 0, 0}
-			// Loop for antialiasing
-			for sample := 0; sample < cam.sample_per_pixel; sample++ {
-				ray := cam.get_ray(float64(i), float64(j))
-				pixel_color = *pixel_color.Add((*cam).ray_color(ray, cam.max_depth, world))
-			}
-			pixel_color = *pixel_color.Scale(cam.pixel_samples_scale).Gamma(2)
+	// The worker function.
+	worker := func() {
+		for row_num := range jobs {
+			pixelRow := make([]Vec3, cam.image_width)
+			for col_num := 0; col_num < cam.image_width; col_num++ {
+				pixel_color := NewVec3(0, 0, 0)
+				// Loop for antialiasing
+				for sample := 0; sample < cam.sample_per_pixel; sample++ {
+					ray := cam.get_ray(float64(col_num), float64(row_num))
+					pixel_color.IAdd((*cam).ray_color(ray, cam.max_depth, world))
+				}
 
-			img.Set(i, j, color.NRGBA{
+				pixelRow[col_num] = *pixel_color.Scale(cam.pixel_samples_scale).Gamma(2)
+			}
+			results <- result{rownum: row_num, pixel_list: pixelRow}
+		}
+	}
+
+	// number of workers in the pool
+	worker_count := runtime.NumCPU()
+
+	// Spin up the worker threads
+	for i := 0; i < worker_count; i++ {
+		go worker()
+	}
+
+	// Distribute work
+	for i := 0; i < cam.image_height; i++ {
+		jobs <- i
+	}
+	close(jobs)
+
+	for i := 0; i < cam.image_height; i++ {
+		result := <-results
+		for idx, pixel_color := range result.pixel_list {
+			img.Set(idx, result.rownum, color.NRGBA{
 				uint8(255 * clamp(pixel_color[0])),
 				uint8(255 * clamp(pixel_color[1])),
 				uint8(255 * clamp(pixel_color[2])),
 				0xff})
 		}
 	}
+	close(results)
 
 	file, err := os.Create("main.png")
 	if err != nil {

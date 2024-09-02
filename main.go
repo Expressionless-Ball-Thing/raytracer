@@ -153,8 +153,14 @@ func cornell_box() {
 	world.Add(NewQuad(NewVec3(0, 0, 0), NewVec3(555, 0, 0), NewVec3(0, 0, 555), white))
 	world.Add(NewQuad(NewVec3(555, 555, 555), NewVec3(-555, 0, 0), NewVec3(0, 0, -555), white))
 	world.Add(NewQuad(NewVec3(0, 0, 555), NewVec3(555, 0, 0), NewVec3(0, 555, 0), white))
-	world.Add(NewTranslate(NewRotate(NewBox(*NewVec3(0, 0, 0), *NewVec3(165, 330, 165), white), 0, 15, 0), *NewVec3(265, 0, 295)))
-	world.Add(NewTranslate(NewRotate(NewBox(*NewVec3(0, 0, 0), *NewVec3(165, 165, 165), white), 0, -18, 0), *NewVec3(130, 0, 65)))
+	world.Add(*NewTranslate(NewRotate(NewBox(*NewVec3(0, 0, 0), *NewVec3(165, 330, 165), white), 0, 15, 0), NewVec3(265, 0, 295)))
+	world.Add(*NewTranslate(NewRotate(NewBox(*NewVec3(0, 0, 0), *NewVec3(165, 165, 165), white), 0, -18, 0), NewVec3(130, 0, 65)))
+
+	// world.Add(NewRotate(NewBox(*NewVec3(130, 0, 65), *NewVec3(295, 165, 230), white), 0, -18, 0))
+	// world.Add(NewRotate(NewBox(*NewVec3(265, 0, 295), *NewVec3(430, 330, 460), white), 0, 15, 0))
+
+	// world.Add(*NewTranslate(NewBox(*NewVec3(0, 0, 0), *NewVec3(165, 330, 165), white), *NewVec3(265, 0, 295)))
+	// world.Add(*NewTranslate(NewBox(*NewVec3(0, 0, 0), *NewVec3(165, 165, 165), white), *NewVec3(130, 0, 65)))
 
 	cam := NewCamera(600, *NewVec3(278, 278, -800), *NewVec3(278, 278, 0), *NewVec3(0, 1, 0), 40, 1, 1, 0, *NewVec3(0, 0, 0))
 	cam.render(&world, 200, 50)
@@ -174,18 +180,8 @@ func cornell_smoke() {
 	world.Add(NewQuad(NewVec3(0, 555, 0), NewVec3(555, 0, 0), NewVec3(0, 0, 555), white))
 	world.Add(NewQuad(NewVec3(0, 0, 0), NewVec3(555, 0, 0), NewVec3(0, 0, 555), white))
 	world.Add(NewQuad(NewVec3(0, 0, 555), NewVec3(555, 0, 0), NewVec3(0, 555, 0), white))
-
-	var box1 Hittable = NewBox(*NewVec3(0, 0, 0), *NewVec3(165, 330, 165), white)
-	box1 = NewRotate(box1, 0, 15, 0)
-	box1 = NewTranslate(box1, *NewVec3(265, 0, 295))
-	world.Add(NewConstantMediumAlbedo(&box1, 0.01, *NewVec3(0, 0, 0)))
-	world.Add(box1)
-
-	var box2 Hittable = NewBox(*NewVec3(0, 0, 0), *NewVec3(165, 165, 165), white)
-	box2 = NewRotate(box2, 0, -18, 0)
-	box2 = NewTranslate(box2, *NewVec3(130, 0, 65))
-	world.Add(NewConstantMediumAlbedo(&box2, 0.01, *NewVec3(1, 1, 1)))
-	world.Add(box2)
+	world.Add(NewConstantMediumAlbedo(NewTranslate(NewRotate(NewBox(*NewVec3(0, 0, 0), *NewVec3(165, 330, 165), white), 0, 15, 0), NewVec3(265, 0, 295)), 0.01, *NewVec3(0, 0, 0)))
+	world.Add(NewConstantMediumAlbedo(NewTranslate(NewRotate(NewBox(*NewVec3(0, 0, 0), *NewVec3(165, 165, 165), white), 0, -18, 0), NewVec3(130, 0, 65)), 0.01, *NewVec3(1, 1, 1)))
 
 	cam := NewCamera(600, *NewVec3(278, 278, -800), *NewVec3(278, 278, 0), *NewVec3(0, 1, 0), 40, 1, 1, 0, *NewVec3(0, 0, 0))
 	cam.render(&world, 200, 50)
@@ -244,9 +240,9 @@ func final_scene(image_width, samples_per_pixel, max_depth int) {
 		boxes2.Add(NewSphere(*NewVec3Random(0, 165), 10, white))
 	}
 
-	world.Add(NewTranslate(
+	world.Add(*NewTranslate(
 		NewRotate(
-			NewBVHNode(boxes2.list), 0, 15, 0), *NewVec3(-100, 270, 395),
+			NewBVHNode(boxes2.list), 0, 15, 0), NewVec3(-100, 270, 395),
 	),
 	)
 
@@ -264,11 +260,21 @@ func final_scene(image_width, samples_per_pixel, max_depth int) {
 
 }
 
+func triangles() {
+	var world Hit_List
+
+	world.Add(NewTriangle(NewVec3(0, 0, -1), NewVec3(0, 1, 0), NewVec3(1, 0, 0), NewLambert(*NewVec3(1, 0, 0))))
+
+	cam := NewCamera(1200, *NewVec3(0, 0, 0), *NewVec3(0, 0, -1), *NewVec3(0, 1, 0), 90, 1, 1, 0, *NewVec3(0.7, 0.8, 1.0))
+
+	cam.render(&world, 100, 50)
+}
+
 func main() {
 	wd, _ := os.Getwd()
 	defer profile.Start(profile.ProfilePath(wd)).Stop()
 	start := time.Now()
-	switch 7 {
+	switch 10 {
 	case 1:
 		bouncing_spheres()
 	case 2:
@@ -286,7 +292,9 @@ func main() {
 	case 8:
 		cornell_smoke()
 	case 9:
-		final_scene(800, 10000, 40)
+		final_scene(1200, 200, 50)
+	case 10:
+		triangles()
 	default:
 		final_scene(400, 250, 4)
 	}

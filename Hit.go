@@ -82,12 +82,14 @@ type Translate struct {
 	bbox   AABB
 }
 
-func NewTranslate(object Hittable, offset Vec3) *Translate {
-	return &Translate{
+func NewTranslate(object Hittable, offset *Vec3) *Hittable {
+	var thing Hittable = &Translate{
 		object: &object,
-		offset: offset,
-		bbox:   *object.bounding_box().AddOffset(offset),
+		offset: *offset,
+		bbox:   *(object).bounding_box().AddOffset(*offset),
 	}
+
+	return &thing
 }
 
 func (tran *Translate) hit(ray *Ray, ray_tmin float64, ray_tmax float64, record *Hit) (ok bool) {
@@ -100,7 +102,7 @@ func (tran *Translate) hit(ray *Ray, ray_tmin float64, ray_tmax float64, record 
 		return false
 	}
 
-	record.point = *record.point.Add(&tran.offset)
+	record.point.IAdd(&tran.offset)
 	return true
 
 }
@@ -174,11 +176,8 @@ func (rot *Rotate) hit(ray *Ray, ray_tmin float64, ray_tmax float64, record *Hit
 	// Change the intersection point from object space to world space
 	point, normal := record.point, record.normal
 
-	point = *rot.RotateClockwise(&point)
-	normal = *rot.RotateClockwise(&normal)
-
-	record.point = point
-	record.normal = normal
+	record.point = *rot.RotateAntiClockWise(&point)
+	record.normal = *rot.RotateAntiClockWise(&normal)
 
 	return true
 }
