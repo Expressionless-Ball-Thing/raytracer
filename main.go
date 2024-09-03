@@ -20,8 +20,8 @@ func bouncing_spheres() {
 		NewSphere(*NewVec3(0, -1000, 0), 1000, NewLambertTex(checker)),
 	)
 
-	for a := -5; a < 5; a++ {
-		for b := -5; b < 5; b++ {
+	for a := -11; a < 11; a++ {
+		for b := -11; b < 11; b++ {
 			choose_mat := rand.Float64()
 			center := NewVec3(float64(a)+0.9*rand.Float64(), 0.2, float64(b)+0.9*rand.Float64())
 
@@ -208,7 +208,8 @@ func final_scene(image_width, samples_per_pixel, max_depth int) {
 
 	var world Hit_List
 
-	world.Add(NewBVHNode(boxes1.list))
+	// world.Add(NewBVHNode(boxes1.list))
+	world.Add(&boxes1)
 
 	light := NewDiffuseLightColor(*NewVec3(7, 7, 7))
 	world.Add(NewQuad(NewVec3(123, 554, 147), NewVec3(300, 0, 0), NewVec3(0, 0, 265), light))
@@ -242,7 +243,7 @@ func final_scene(image_width, samples_per_pixel, max_depth int) {
 
 	world.Add(*NewTranslate(
 		NewRotate(
-			NewBVHNode(boxes2.list), 0, 15, 0), NewVec3(-100, 270, 395),
+			&boxes2, 0, 15, 0), NewVec3(-100, 270, 395),
 	),
 	)
 
@@ -270,11 +271,22 @@ func triangles() {
 	cam.render(&world, 100, 50)
 }
 
+func teapot() {
+
+	var world Hit_List
+
+	world.Add(NewRotate(NewObj("teapot.obj"), 0, 0, -90))
+
+	cam := NewCamera(600, *NewVec3(0, 5, -50), *NewVec3(0, 5, 0), *NewVec3(0, 1, 0), 40, 1, 1, 0, *NewVec3(0.7, 0.8, 1.0))
+
+	cam.render(&world, 100, 10)
+}
+
 func main() {
 	wd, _ := os.Getwd()
 	defer profile.Start(profile.ProfilePath(wd)).Stop()
 	start := time.Now()
-	switch 10 {
+	switch 1 {
 	case 1:
 		bouncing_spheres()
 	case 2:
@@ -295,9 +307,12 @@ func main() {
 		final_scene(1200, 200, 50)
 	case 10:
 		triangles()
+	case 11:
+		teapot()
 	default:
 		final_scene(400, 250, 4)
 	}
 	elapsed := time.Since(start)
 	fmt.Println("Took", elapsed)
+
 }
