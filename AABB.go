@@ -91,8 +91,13 @@ func (aabb *AABB) hit_test(ray *Ray, ray_tmin float64, ray_tmax float64) (ok boo
 }
 
 // Modify AABB by an offset
-func (bbox *AABB) AddOffset(offset Vec3) *AABB {
-	return NewAABB(*bbox.minVec.Add(&offset), *bbox.maxVec.Add(&offset))
+func (bbox *AABB) AddOffset(offset *Vec3) *AABB {
+	return NewAABB(*bbox.minVec.Add(offset), *bbox.maxVec.Add(offset))
+}
+
+// Scale an AABB
+func (bbox *AABB) Scale(scale_fac *Vec3) *AABB {
+	return NewAABB(*bbox.minVec.Mult(scale_fac), *bbox.maxVec.Mult(scale_fac))
 }
 
 func NewEmptyAABB() *AABB {

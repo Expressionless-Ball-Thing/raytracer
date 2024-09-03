@@ -156,12 +156,6 @@ func cornell_box() {
 	world.Add(*NewTranslate(NewRotate(NewBox(*NewVec3(0, 0, 0), *NewVec3(165, 330, 165), white), 0, 15, 0), NewVec3(265, 0, 295)))
 	world.Add(*NewTranslate(NewRotate(NewBox(*NewVec3(0, 0, 0), *NewVec3(165, 165, 165), white), 0, -18, 0), NewVec3(130, 0, 65)))
 
-	// world.Add(NewRotate(NewBox(*NewVec3(130, 0, 65), *NewVec3(295, 165, 230), white), 0, -18, 0))
-	// world.Add(NewRotate(NewBox(*NewVec3(265, 0, 295), *NewVec3(430, 330, 460), white), 0, 15, 0))
-
-	// world.Add(*NewTranslate(NewBox(*NewVec3(0, 0, 0), *NewVec3(165, 330, 165), white), *NewVec3(265, 0, 295)))
-	// world.Add(*NewTranslate(NewBox(*NewVec3(0, 0, 0), *NewVec3(165, 165, 165), white), *NewVec3(130, 0, 65)))
-
 	cam := NewCamera(600, *NewVec3(278, 278, -800), *NewVec3(278, 278, 0), *NewVec3(0, 1, 0), 40, 1, 1, 0, *NewVec3(0, 0, 0))
 	cam.render(&world, 200, 50)
 }
@@ -208,7 +202,6 @@ func final_scene(image_width, samples_per_pixel, max_depth int) {
 
 	var world Hit_List
 
-	// world.Add(NewBVHNode(boxes1.list))
 	world.Add(&boxes1)
 
 	light := NewDiffuseLightColor(*NewVec3(7, 7, 7))
@@ -282,11 +275,30 @@ func teapot() {
 	cam.render(&world, 100, 10)
 }
 
+func more_transforms() {
+
+	var world Hit_List
+
+	// Materials
+	back_green := NewLambert(*NewVec3(0.2, 1.0, 0.2))
+	upper_orange := NewLambert(*NewVec3(1.0, 0.5, 0.0))
+
+	//Quads
+	world.Add(
+		*NewScale(NewQuad(NewVec3(-2, -2, 0), NewVec3(4, 0, 0), NewVec3(0, 4, 0), back_green), 2, 2, 2),
+		NewShear(NewQuad(NewVec3(-2, 3, 1), NewVec3(4, 0, 0), NewVec3(0, 0, 4), upper_orange), 0, 1, 0, 0, 0, 0),
+	)
+
+	cam := NewCamera(1000, *NewVec3(0, 0, 9), *NewVec3(0, 0, 0), *NewVec3(0, 1, 0), 80, 16.0/9.0, 1, 0, *NewVec3(0.7, 0.8, 1.0))
+	cam.render(&world, 100, 50)
+}
+
 func main() {
+
 	wd, _ := os.Getwd()
 	defer profile.Start(profile.ProfilePath(wd)).Stop()
 	start := time.Now()
-	switch 1 {
+	switch 12 {
 	case 1:
 		bouncing_spheres()
 	case 2:
@@ -309,6 +321,8 @@ func main() {
 		triangles()
 	case 11:
 		teapot()
+	case 12:
+		more_transforms()
 	default:
 		final_scene(400, 250, 4)
 	}
